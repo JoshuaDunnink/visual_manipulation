@@ -22,7 +22,7 @@ class ImageRecognizor:
         ) = self._get_x_and_y_location_on_cv2_match()
         self._draw_rectangle_on_screen()
 
-        cv2.imshow('output', self.screen)
+        cv2.imshow("output", self.screen)
         cv2.waitKey(0)
 
     def get_center_x_and_y_pixel_location(self):
