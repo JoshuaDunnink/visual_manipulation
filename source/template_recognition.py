@@ -1,11 +1,10 @@
 import cv2
 import numpy as np
-import pyautogui
-from time import time
-from functools import wraps
 from PIL import ImageGrab
+from timer import timer
 
-DEFAULT_TEMPLATE_MATCHING_THRESHOLD = 0.5
+
+DEFAULT_MATCHING_THRESHOLD = 0.5
 
 
 class Template:
@@ -18,15 +17,16 @@ class Template:
         image_path,
         label,
         color,
-        matching_threshold=DEFAULT_TEMPLATE_MATCHING_THRESHOLD,
+        matching_threshold=DEFAULT_MATCHING_THRESHOLD,
     ):
         """
         Args:
             image_path (str): path of the template image path
             label (str): the label corresponding to the template
-            color (List[int]): the color associated with the label (to plot detections)
-            matching_threshold (float): the minimum similarity score to consider an object is detected by template
-                matching
+            color (List[int]): the color associated with the label
+                (to plot detections)
+            matching_threshold (float): the minimum similarity score to
+                consider an object is detected by template matching
         """
         self.image_path = image_path
         self.label = label
@@ -97,8 +97,8 @@ class Detector:
                 img=image_with_detections,
                 text=str(detection['MATCH_VALUE'])[:4],
                 org=(
-                    detection["TOP_LEFT_X"] + 2,
-                    detection["TOP_LEFT_Y"] + 20,
+                    detection["TOP_LEFT_X"] - 10,
+                    detection["TOP_LEFT_Y"] - 10,
                 ),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=0.5,
@@ -116,15 +116,21 @@ class Detector:
         score_key="MATCH_VALUE",
     ):
         """
-        Filter objects overlapping with IoU over threshold by keeping only the one with maximum score.
+        Filter objects overlapping with IoU over threshold by keeping
+        only the one with maximum score.
         Args:
             objects (List[dict]): a list of objects dictionaries, with:
                 {score_key} (float): the object score
-                {top_left_x} (float): the top-left x-axis coordinate of the object bounding box
-                {top_left_y} (float): the top-left y-axis coordinate of the object bounding box
-                {bottom_right_x} (float): the bottom-right x-axis coordinate of the object bounding box
-                {bottom_right_y} (float): the bottom-right y-axis coordinate of the object bounding box
-            non_max_suppression_threshold (float): the minimum IoU value used to filter overlapping boxes when
+                {top_left_x} (float): the top-left x-axis coordinate of
+                    the object bounding box
+                {top_left_y} (float): the top-left y-axis coordinate of
+                    the object bounding box
+                {bottom_right_x} (float): the bottom-right x-axis
+                    coordinate of the object bounding box
+                {bottom_right_y} (float): the bottom-right y-axis
+                    coordinate of the object bounding box
+            non_max_suppression_threshold (float): the minimum IoU value
+                used to filter overlapping boxes when
                 conducting non max suppression.
             score_key (str): score key in objects dicts
         Returns:
@@ -147,7 +153,8 @@ class Detector:
 
     @staticmethod
     def _get_iou(a, b, epsilon=1e-5):
-        """Given two boxes `a` and `b` defined as a list of four numbers:
+        """Given two boxes `a` and `b` defined as a list
+            of four numbers:
                 [x1,y1,x2,y2]
             where:
                 x1,y1 represent the upper left corner
@@ -162,22 +169,18 @@ class Detector:
         Returns:
             (float) The Intersect of Union score.
         """
-
-        # COORDINATES OF THE INTERSECTION BOX
         x1 = max(a["TOP_LEFT_X"], b["TOP_LEFT_X"])
         y1 = max(a["TOP_LEFT_Y"], b["TOP_LEFT_Y"])
         x2 = min(a["BOTTOM_RIGHT_X"], b["BOTTOM_RIGHT_X"])
         y2 = min(a["BOTTOM_RIGHT_Y"], b["BOTTOM_RIGHT_Y"])
 
-        # AREA OF OVERLAP - Area where the boxes intersect
         width = x2 - x1
         height = y2 - y1
-        # handle case where there is NO overlap
+
         if (width < 0) or (height < 0):
             return 0.0
         area_overlap = width * height
 
-        # COMBINED AREA
         area_a = (a["BOTTOM_RIGHT_X"] - a["TOP_LEFT_X"]) * (
             a["BOTTOM_RIGHT_Y"] - a["TOP_LEFT_Y"]
         )
@@ -186,7 +189,6 @@ class Detector:
         )
         area_combined = area_a + area_b - area_overlap
 
-        # RATIO OF AREA OF OVERLAP OVER COMBINED AREA
         iou = area_overlap / (area_combined + epsilon)
         return iou
 
@@ -219,21 +221,7 @@ templates = [
 ]
 
 
-def timing(f):
-    @wraps(f)
-    def wrap(*args, **kw):
-        ts = time()
-        result = f(*args, **kw)
-        te = time()
-        print(
-            'func:%r took: %2.4f sec' %
-            (f.__name__, te-ts)
-        )
-        return result
-    return wrap
-
-
-@timing
+@timer
 def do_it(detector):
     # screenshot_path = "screencaptures\\sceenshot.png"
     # pyautogui.screenshot().save(screenshot_path)
