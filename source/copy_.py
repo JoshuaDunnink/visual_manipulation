@@ -1,5 +1,9 @@
 import cv2
 import numpy as np
+import pyautogui
+from time import time
+from functools import wraps
+from PIL import ImageGrab
 
 DEFAULT_TEMPLATE_MATCHING_THRESHOLD = 0.5
 
@@ -40,8 +44,16 @@ class Detector:
         self.match_method = cv2.TM_CCOEFF_NORMED
         self.NMS_THRESHOLD = 0.2
 
-    def detect(self, template=None):
-        if not template:
+    def detect(self, templates=None, image=None, use_feed=False):
+        self.detections = []
+        if use_feed:
+            screen = ImageGrab.grab()
+            self.image = np.array(screen)
+            # self.image = cv2.cvtColor(screen_array, cv2.COLOR_BGR2GRAY)
+        elif image:
+            self.image = cv2.imread(image)
+
+        if not templates:
             for template in self.templates:
                 template_matching = cv2.matchTemplate(
                     template.template, self.image, self.match_method
@@ -65,8 +77,11 @@ class Detector:
                     self.detections.append(match)
 
         self.detections = self._non_max_suppression(
-            self.detections, non_max_suppression_threshold=self.NMS_THRESHOLD
+            self.detections,
+            non_max_suppression_threshold=self.NMS_THRESHOLD,
         )
+        if self.detections:
+            print(f"found {len(self.detections)}")
 
     def show_detections(self):
         image_with_detections = self.image.copy()
@@ -81,7 +96,10 @@ class Detector:
             cv2.putText(
                 img=image_with_detections,
                 text=str(detection['MATCH_VALUE'])[:4],
-                org=(detection["TOP_LEFT_X"] + 2, detection["TOP_LEFT_Y"] + 20),
+                org=(
+                    detection["TOP_LEFT_X"] + 2,
+                    detection["TOP_LEFT_Y"] + 20,
+                ),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=0.5,
                 color=detection["COLOR"],
@@ -89,8 +107,7 @@ class Detector:
                 bottomLeftOrigin=cv2.LINE_AA,
             )
 
-        cv2.imshow("result", image_with_detections)
-        cv2.waitKey(0)
+        cv2.imshow("2", image_with_detections)
 
     def _non_max_suppression(
         self,
@@ -176,32 +193,58 @@ class Detector:
 
 templates = [
     Template(image_path="compare/waldo.png", label="1", color=(0, 0, 255)),
-    Template(
-        image_path="compare/blond_on_beach.png",
-        label="2",
-        color=(0, 255, 0),
-    ),
-    Template(
-        image_path="compare/beach_screen.png",
-        label="3",
-        color=(0, 191, 255),
-        matching_threshold=0.8,
-    ),
-    Template(
-        image_path="compare/wave.png",
-        label="3",
-        color=(0, 0, 255),
-        matching_threshold=0.8,
-    ),
-    Template(
-        image_path="compare/belly_button.png",
-        label="3",
-        color=(0, 0, 255),
-        matching_threshold=0.7,
-    ),
+    # Template(
+    #     image_path="compare/blond_on_beach.png",
+    #     label="2",
+    #     color=(0, 255, 0),
+    # ),
+    # Template(
+    #     image_path="compare/beach_screen.png",
+    #     label="3",
+    #     color=(0, 191, 255),
+    #     matching_threshold=0.8,
+    # ),
+    # Template(
+    #     image_path="compare/wave.png",
+    #     label="3",
+    #     color=(0, 0, 255),
+    #     matching_threshold=0.8,
+    # ),
+    # Template(
+    #     image_path="compare/belly_button.png",
+    #     label="3",
+    #     color=(0, 0, 255),
+    #     matching_threshold=0.7,
+    # ),
 ]
 
 
-detector = Detector(templates, image="compare/full.png")
-detector.detect()
-detector.show_detections()
+def timing(f):
+    @wraps(f)
+    def wrap(*args, **kw):
+        ts = time()
+        result = f(*args, **kw)
+        te = time()
+        print(
+            'func:%r took: %2.4f sec' %
+            (f.__name__, te-ts)
+        )
+        return result
+    return wrap
+
+
+@timing
+def do_it(detector):
+    # screenshot_path = "screencaptures\\sceenshot.png"
+    # pyautogui.screenshot().save(screenshot_path)
+    detector.detect(use_feed=True)
+
+
+def main():
+    detector = Detector(templates, image="compare\\full.png")
+    for _ in range(10):
+        do_it(detector)
+
+
+if __name__ == "__main__":
+    main()
